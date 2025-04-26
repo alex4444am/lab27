@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firebase Push Notification</title>
+</head>
+<body>
+  <h1>Відправити Push-повідомлення</h1>
+  <form id="messageForm">
+    <label for="title">Заголовок:</label>
+    <input type="text" id="title" required><br><br>
+
+    <label for="body">Текст повідомлення:</label>
+    <textarea id="body" required></textarea><br><br>
+
+    <label for="token">FCM Токен:</label>
+    <input type="text" id="token" required><br><br>
+
+    <button type="submit">Відправити повідомлення</button>
+  </form>
+
+  <script>
+    const form = document.getElementById('messageForm');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault(); // Запобігає стандартній поведінці форми (перезавантаження сторінки)
+  
+      const title = document.getElementById('title').value;
+      const body = document.getElementById('body').value;
+      const token = document.getElementById('token').value;
+  
+      const response = await fetch('/sendMessage', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          body,
+          token
+        }),
+      });
+  
+      if (response.ok) {
+        alert('Повідомлення відправлено!');
+      } else {
+        alert('Помилка відправки повідомлення.');
+      }
+    });
+  </script>
+  
+</body>
+</html>
+
+
+
+
+
+const express = require('express');
+const admin = require('firebase-admin');
+const bodyParser = require('body-parser');
+
+const serviceAccount = require('./alex-19843-firebase-adminsdk-fbsvc-10d836288d.json');
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+const db = admin.firestore();
+const app = express();
+const port = 3000;
+
+app.use(bodyParser.json());
+
+app.use(express.static('public'));
+
+app.post('/sendMessage', async (req, res) => {
+    const { title, body, token } = req.body;
+
+    try {
+      await db.collection('messages').add({
+        title,
+        body,
+        token,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      res.status(200).send('Повідомлення записано');
+    } catch (error) {
+      console.error('Помилка при записі в Firestore:', error);
+      res.status(500).send('Помилка при відправці повідомлення');
+    }
+});
+
+app.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
+});
